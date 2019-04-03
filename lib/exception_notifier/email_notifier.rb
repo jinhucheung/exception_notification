@@ -30,6 +30,7 @@ module ExceptionNotifier
             @backtrace  = exception.backtrace ? clean_backtrace(exception) : []
             @sections   = @options[:sections]
             @data       = (env['exception_notifier.exception_data'] || {}).merge(options[:data] || {})
+            @data       = filter_parameters(@data)
             @sections   = @sections + %w(data) unless @data.empty?
 
             compose_email
@@ -43,6 +44,7 @@ module ExceptionNotifier
             @backtrace = exception.backtrace || []
             @sections  = @options[:background_sections]
             @data      = options[:data] || {}
+            @data      = filter_parameters(@data)
 
             compose_email
           end
@@ -112,6 +114,14 @@ module ExceptionNotifier
 
           def load_custom_views
             self.prepend_view_path Rails.root.nil? ? "app/views" : "#{Rails.root}/app/views" if defined?(Rails)
+          end
+
+          def filter_parameters(parameters)
+            parameter_filter = ActionDispatch::Http::ParameterFilter.new(Rails.application.config.filter_parameters)
+            parameter_filter.filter(parameters)
+          rescue => e
+            logger.warn "An error occurred when filtering parameters '#{parameters}'. #{e.class}: #{e.message}"
+            parameters
           end
         end
       end
